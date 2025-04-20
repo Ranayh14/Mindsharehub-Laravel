@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'username', 'email', 'pass', 'roles', 'is_banned', 'ban_reason', 'ban_date', 'profile_picture', 'progress_percentage'
@@ -45,5 +46,13 @@ class User extends Authenticatable
 
     public function likedComments() {
         return $this->belongsToMany(Comment::class, 'comment_likes');
+    }
+
+    public function reportedPosts() {
+        return $this->hasMany(Report::class, 'reported_by');
+    }
+
+    public function reportedComments() {
+        return $this->hasMany(CommentReport::class, 'user_id');
     }
 }

@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CommentReport extends Model
 {
-    protected $table = 'comment_reports';
+    use HasFactory;
 
-    protected $fillable = ['comment_id', 'user_id', 'reason', 'description', 'status'];
+    protected $fillable = [
+        'comment_id', 'user_id', 'reason', 'description', 'status'
+    ];
 
     public function comment() {
         return $this->belongsTo(Comment::class);
