@@ -1,120 +1,160 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { route } from 'ziggy-js';
+import { Ziggy } from '@/ziggy';
+import TermsModal from '@/Components/TermsModal';
+import '@dotlottie/player-component';
 
 export default function Register() {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
+  const { data, setData, post, processing, errors, reset } = useForm({
+    email: '',
+    password: '',
+    password_confirmation: '',
+    terms: false,
+  });
+
+  const { flash = {} } = usePage().props;
+  const [showTerms, setShowTerms] = useState(false);
+  const [message, setMessage] = useState(flash.success || flash.error);
+
+  useEffect(() => {
+    let timer;
+    if (message) {
+      timer = setTimeout(() => setMessage(null), 5000);
+    }
+    return () => timer && clearTimeout(timer);
+  }, [message]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    post(route('register.attempt', {}, false, Ziggy), {
+      onSuccess: () => {
+        reset('password', 'password_confirmation');
+      },
     });
+  };
 
-    const submit = (e) => {
-        e.preventDefault();
+  return (
+    <>
+      <Head title="Register" />
 
-        post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
-    };
+      <div className="flex flex-col md:flex-row h-screen">
+        {/* Illustration */}
+        <div
+          className="hidden md:block flex-grow bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/poster1.png')" }}
+        />
 
-    return (
-        <GuestLayout>
-            <Head title="Register" />
+        {/* Form */}
+        <div className="w-full md:w-8/12 p-8 bg-[#2B1B54] text-white flex flex-col justify-center relative overflow-hidden">
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
+          {/* Background animations */}
+          <dotlottie-player
+            src="https://lottie.host/2c9557a7-b65b-4d41-8e57-d6e566c92891/0uJzquhaU2.lottie"
+            background="transparent"
+            speed="1"
+            loop
+            autoplay
+            class="absolute -top-64 -right-64 w-[1400px] h-[1400px] opacity-30 pointer-events-none"
+          />
+          <dotlottie-player
+            src="https://lottie.host/2c9557a7-b65b-4d41-8e57-d6e566c92891/0uJzquhaU2.lottie"
+            background="transparent"
+            speed="1"
+            loop
+            autoplay
+            class="absolute -bottom-64 -left-64 w-[1400px] h-[1400px] opacity-30 pointer-events-none"
+          />
 
-                    <TextInput
-                        id="name"
-                        name="name"
-                        value={data.name}
-                        className="mt-1 block w-full"
-                        autoComplete="name"
-                        isFocused={true}
-                        onChange={(e) => setData('name', e.target.value)}
-                        required
-                    />
+          <div className="relative z-10 max-w-md mx-auto w-full">
+            <div className="text-center mb-6">
+              <img src="/images/Logo MindsahreHub-07.png" alt="Logo" className="w-32 h-32 mx-auto mb-3" />
+              <h2 className="text-4xl font-bold">Yuk, bikin akunmu!</h2>
+            </div>
 
-                    <InputError message={errors.name} className="mt-2" />
-                </div>
+            {message && (
+              <div className={`mb-4 p-3 text-sm rounded text-center ${flash.error ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-green-100 text-green-800 border border-green-300'}`}>
+                {message}
+              </div>
+            )}
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
+            <form onSubmit={submit} className="space-y-6 p-5 max-w-md w-full rounded-lg shadow-md bg-white bg-opacity-20 backdrop-blur-lg">
+              {/* Email */}
+              <div>
+                <label className="block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={data.email}
+                  onChange={(e) => setData('email', e.target.value)}
+                  className="w-full px-4 py-2 rounded bg-gray-100 text-gray-800"
+                  required
+                />
+                {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
+              </div>
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
-                        required
-                    />
+              {/* Password */}
+              <div>
+                <label className="block mb-1">Kata Sandi</label>
+                <input
+                  type="password"
+                  value={data.password}
+                  onChange={(e) => setData('password', e.target.value)}
+                  className="w-full px-4 py-2 rounded bg-gray-100 text-gray-800"
+                  required
+                />
+                {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
+              </div>
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
+              {/* Confirm Password */}
+              <div>
+                <label className="block mb-1">Konfirmasi Kata Sandi</label>
+                <input
+                  type="password"
+                  value={data.password_confirmation}
+                  onChange={(e) => setData('password_confirmation', e.target.value)}
+                  className="w-full px-4 py-2 rounded bg-gray-100 text-gray-800"
+                  required
+                />
+                {errors.password_confirmation && <p className="text-red-400 text-sm mt-1">{errors.password_confirmation}</p>}
+              </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+              {/* Terms */}
+              <div className="flex items-start gap-2">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={data.terms}
+                  onChange={(e) => setData('terms', e.target.checked)}
+                />
+                <label htmlFor="terms" className="text-sm">
+                  Saya menyetujui{' '}
+                  <button type="button" onClick={() => setShowTerms(true)} className="underline">
+                    Syarat &amp; Ketentuan
+                  </button>
+                </label>
+              </div>
+              {errors.terms && <p className="text-red-400 text-sm">{errors.terms}</p>}
 
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                        required
-                    />
+              <button
+                type="submit"
+                disabled={processing}
+                className="w-full py-2 bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50"
+              >
+                Daftar
+              </button>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
-                        id="password_confirmation"
-                        type="password"
-                        name="password_confirmation"
-                        value={data.password_confirmation}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        required
-                    />
-
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    <Link
-                        href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Already registered?
-                    </Link>
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
-                </div>
+              <p className="text-center text-sm">
+                Sudah punya akun?{' '}
+                <Link href={route('login', {}, false, Ziggy)} className="underline">
+                  Masuk di sini
+                </Link>
+              </p>
             </form>
-        </GuestLayout>
-    );
+          </div>
+        </div>
+      </div>
+
+      <TermsModal show={showTerms} onClose={() => setShowTerms(false)} />
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
-import TermsModal   from '../Components/TermsModal';
+import TermsModal   from './TermsModal';
 
 export default function Footer() {
   return (

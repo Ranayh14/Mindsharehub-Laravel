@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             DiarySeeder::class,
             CommentReportSeeder::class,
             AudioNoteSeeder::class,
+            AdminUserSeeder::class,
         ]);
     }
 }
