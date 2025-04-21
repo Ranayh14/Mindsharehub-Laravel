@@ -17,7 +17,7 @@ class UserFactory extends Factory
         return [
             'username' => 'user' . str_pad($index++, 3, '0', STR_PAD_LEFT),  // Format: user001, user002, ...
             'email' => $this->faker->unique()->safeEmail,  // Pastikan email juga unik
-            'pass' => bcrypt('password'),
+            'password' => bcrypt('password'),
             'roles' => 'user',
             'is_banned' => $this->faker->boolean,
             'ban_reason' => $this->faker->text,
