@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('username', 50)->unique();
             $table->string('email', 100)->unique();
-            $table->string('pass');
+            $table->string('password');
             $table->enum('roles', ['admin', 'user'])->default('user');
             $table->boolean('is_banned')->default(false);
             $table->text('ban_reason')->nullable();

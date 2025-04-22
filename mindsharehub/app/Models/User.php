@@ -3,18 +3,42 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory;
+
+    protected $table = 'users';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
-        'username', 'email', 'pass', 'roles', 'is_banned', 'ban_reason', 'ban_date', 'profile_picture', 'progress_percentage'
+        'username',
+        'email',
+        'password',
+        'roles',
+        'is_banned',
+        'ban_reason',
+        'ban_date',
+        'profile_picture',
+        'progress_percentage',
     ];
 
-    protected $hidden = ['pass'];
+    protected $hidden = [
+        'password',
+    ];
+
+    /**
+     * Generate random username auto
+     */
+    public static function generateUsername()
+    {
+        do {
+            $u = 'user'.random_int(100, 999999);
+        } while (self::where('username', $u)->exists());
+
+        return $u;
+    }
 
     public function contents() {
         return $this->hasMany(Content::class);
