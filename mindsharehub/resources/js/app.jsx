@@ -3,6 +3,7 @@ import 'flowbite/dist/flowbite.js';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
+import { Ziggy } from './ziggy'; // Pastikan Ziggy diimpor
 
 const appName = import.meta.env.VITE_APP_NAME || 'MindshareHub';
 

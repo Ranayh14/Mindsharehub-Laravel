@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             CommentReportSeeder::class,
             AudioNoteSeeder::class,
             AdminUserSeeder::class,
+            
         ]);
     }
 }
