@@ -33,16 +33,25 @@ export default function PostCard({ post }) {
   const handleLike = async () => {
     try {
       const res = await axios.post(route('posts.like', { post: localPost.id }, false, Ziggy));
+  
+      // Perbarui state localPost dengan data terbaru dari server
       setLocalPost(prev => ({
         ...prev,
-        is_liked: res.data.status === 'liked',
-        likes_count: res.data.likes_count,
-        total_comments: res.data.total_comments
+        is_liked: res.data.status === 'liked', // Update status like
+        likes_count: res.data.likes_count, // Update likes count
+        total_comments: res.data.total_comments // Update jumlah komentar
       }));
+  
+      // Reload data secara realtime tanpa perlu refresh halaman
+      Inertia.reload({
+        only: ['posts'], // Reload hanya bagian posts yang ter-reload
+      });
+  
     } catch (err) {
       console.error('Gagal like:', err.response);
     }
   };
+  
 
   const submitComment = e => {
     e.preventDefault();
@@ -51,7 +60,7 @@ export default function PostCard({ post }) {
       onSuccess: () => {
         commentForm.reset();
         setReplyingTo(null); // Reset setelah komentar dikirim
-        Inertia.reload({ only: ['posts'] });
+        Inertia.replace(route('dashboard')); // Pindahkan kembali ke /dashboard
       }
     });
   };
@@ -93,18 +102,27 @@ export default function PostCard({ post }) {
   const handleDelete = () => {
     Inertia.delete(route('posts.destroy', { post: localPost.id }, false, Ziggy), {
       onSuccess: () => {
-        Inertia.reload({ only: ['posts'] });
+        setLocalPost(null);  // Menghapus post dari UI
+        Inertia.replace(route('dashboard')); // Kembali ke dashboard setelah menghapus
       }
     });
   };
 
   const handleEdit = async () => {
     try {
-      await axios.put(route('posts.update', { post: localPost.id }, false, Ziggy), {
+      const response = await axios.put(route('posts.update', { post: localPost.id }, false, Ziggy), {
         content: localPost.content
       });
-      setEditModalOpen(false);
-      Inertia.reload({ only: ['posts'] });
+
+      // Update konten langsung di UI
+      setLocalPost(prev => ({
+        ...prev,
+        content: response.data.content, // Update konten secara langsung
+        is_liked: response.data.is_liked,  // Pastikan data lainnya yang diupdate juga ter-refresh
+        likes_count: response.data.likes_count,
+        total_comments: response.data.total_comments,
+      }));
+      setEditModalOpen(false);  // Tutup modal setelah sukses
     } catch (err) {
       console.error('Gagal edit postingan:', err.response);
     }

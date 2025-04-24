@@ -26,5 +26,5 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard/User', [
             'posts' => $posts,
         ]);
-    }    
+    }     
 }
