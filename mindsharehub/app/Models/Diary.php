@@ -10,10 +10,14 @@ class Diary extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'title', 'content'
+        'user_id',
+        'title',
+        'content',
+        'audio_path',
     ];
 
-    public function user() {
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 }

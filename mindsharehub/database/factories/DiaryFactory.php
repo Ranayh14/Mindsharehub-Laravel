@@ -16,6 +16,7 @@ class DiaryFactory extends Factory
             'user_id' => User::factory(),
             'title' => $this->faker->sentence,
             'content' => $this->faker->text,
+            'audio_path' => null,
         ];
     }
 }

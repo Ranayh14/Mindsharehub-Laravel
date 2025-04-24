@@ -4,63 +4,95 @@ namespace App\Http\Controllers;
 
 use App\Models\Diary;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Inertia\Inertia;
 
 class DiaryController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function index()
     {
-        // Ambil semua diary dan relasi user-nya
-        $diaries = Diary::with('user')->latest()->get();
-
-        // Kirim ke file: resources/js/Pages/Diary/Index.jsx
-        return Inertia::render('Diary/Index', [
-            'diaries' => $diaries
-        ]);
+        $user_id = Auth::id();
+        $diaries = Diary::where('user_id', $user_id)->orderBy('created_at', 'desc')->get();
+        return response()->json($diaries);
     }
 
-    // method lainnya tetap API-style dulu, bisa kita ubah nanti kalau kamu mau
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $diary = Diary::create($request->all());
+        $diary = Diary::create([
+            'user_id' => Auth::id(),
+            'title' => $request->title,
+            'content' => $request->content,
+        ]);
+
         return response()->json($diary, 201);
     }
 
-    public function show(Diary $diary)
-    {
-        return response()->json($diary);
-    }
-
-    public function update(Request $request, Diary $diary)
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $diary->update($request->all());
+        $diary = Diary::where('user_id', Auth::id())->find($id);
+
+        if (!$diary) {
+            return response()->json(['message' => 'Catatan tidak ditemukan'], 404);
+        }
+
+        $diary->update([
+            'title' => $request->title,
+            'content' => $request->content,
+        ]);
+
         return response()->json($diary);
     }
 
-    public function destroy(Diary $diary)
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
     {
-        $diary->delete();
-        return response()->json(['message' => 'Diary deleted successfully']);
+        try {
+            $diary = Diary::where('user_id', Auth::id())->findOrFail($id);
+            $diary->delete();
+            return response()->json(['message' => 'Catatan berhasil dihapus']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Catatan tidak ditemukan'], 404);
+        }
     }
 }

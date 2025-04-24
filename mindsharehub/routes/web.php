@@ -1,31 +1,37 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DiaryController; // ⬅️ Tambahan: import DiaryController
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DiaryController;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+Route::get('/', fn() => Inertia::render('Home'));
+Route::get('/help', fn() => Inertia::render('Help'));
+Route::get('/about', fn() => Inertia::render('AboutUs'));
+
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [PageController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.attempt');
+
+    Route::get('/login', [PageController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+Route::middleware(['auth', 'web'])->group(function(){
+    Route::get('/dashboard', [PageController::class, 'showDashboard'])->name('dashboard');
+    Route::get('/admin/dashboard', [PageController::class, 'showAdminDashboard'])->name('admin.dashboard');
 
-    // ⬇️ Tambahan: Route ke halaman daftar diary
-    Route::get('/diary', [DiaryController::class, 'index'])->name('diary.index');
+    // Diary routes
+    Route::get('/diary', [PageController::class, 'showDiary'])->name('diary');
+
+    // API Routes for Diary
+    Route::prefix('api')->group(function() {
+        Route::get('/diaries', [DiaryController::class, 'index']);
+        Route::post('/diaries', [DiaryController::class, 'store']);
+        Route::put('/diaries/{diary}', [DiaryController::class, 'update']);
+        Route::delete('/diaries/{diary}', [DiaryController::class, 'destroy']);
+    });
 });
-
-require __DIR__.'/auth.php';
