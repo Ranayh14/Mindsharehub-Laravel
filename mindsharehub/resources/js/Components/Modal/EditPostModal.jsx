@@ -1,68 +1,65 @@
-import React, { useEffect } from 'react';
-import { useForm } from '@inertiajs/react';
-import { route } from 'ziggy-js';
-import { Ziggy } from '@/ziggy';
-import DialogWrapper from './DialogWrapper';
+import React, { useState } from 'react';
 
 export default function EditPostModal({ open, onClose, post }) {
-  // post: { id, content, image_path }
-  const { data, setData, put, processing, reset } = useForm({
-    content: post?.content || '',
-    image: null,
-  });
+    const [content, setContent] = useState(post.content);
+    const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.content;
 
-  // Sync when post changes
-  useEffect(() => {
-    setData('content', post?.content || '');
-  }, [post]);
+    const handleSubmit = () => {
+        const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.content;
 
-  function submit(e) {
-    e.preventDefault();
-    put(
-      route('posts.update', { post: post.id }, false, Ziggy),
-      {
-        forceFormData: true,
-        onSuccess: () => {
-          reset();
-          onClose();
-        },
-      }
-    );
-  }
+        fetch(`/posts/${post.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ content })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('Response Error:', text);  // Log HTML response jika bukan JSON
+                    throw new Error('Network response was not ok');
+                });
+            }
+            return response.json();
+        })
+        .then(updatedPost => {
+            console.log('Post updated:', updatedPost); // Log response JSON
+            onClose();
+        })
+        .catch(error => {
+            console.error('There was an error!', error);
+        });
+    };
 
-  return (
-    <DialogWrapper open={open} onClose={onClose} title="Edit Postingan">
-      <form onSubmit={submit} className="space-y-4">
-        <textarea
-          required
-          rows={4}
-          value={data.content}
-          onChange={e => setData('content', e.target.value)}
-          className="w-full border rounded p-2 resize-none"
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={e => setData('image', e.target.files[0])}
-          className="block w-full text-sm"
-        />
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-sm rounded"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            disabled={processing}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded"
-          >
-            Simpan
-          </button>
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-gray-800 text-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+                <h3 className="text-xl font-semibold mb-4">Edit Postingan</h3>
+                <textarea
+                    value={content}
+                    onChange={e => setContent(e.target.value)}
+                    className="w-full h-40 p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="mt-4 flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+                    >
+                        Batal
+                    </button>
+
+                    <button
+                        onClick={handleSubmit}
+                        className="px-6 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                        Simpan
+                    </button>
+                </div>
+            </div>
         </div>
-      </form>
-    </DialogWrapper>
-  );
+    );
 }

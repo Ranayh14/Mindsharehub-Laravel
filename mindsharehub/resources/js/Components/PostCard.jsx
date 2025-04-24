@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import axios from 'axios';
-import EditPostModal from './Modal/EditPostModal';
+import EditPostModal from './Modal/EditPostModal';  // Import EditPostModal
 import ReportPostModal from './Modal/ReportPostModal';
 import DialogWrapper from './Modal/DialogWrapper';
 import { Inertia } from '@inertiajs/inertia';
 import { usePage } from '@inertiajs/react';
 import { Ziggy } from '@/ziggy';
+import ConfirmDeleteModal from './Modal/ConfirmDeleteModal';
 
 export default function PostCard({ post }) {
   const { auth } = usePage().props;
@@ -16,8 +17,12 @@ export default function PostCard({ post }) {
 
   const [localPost, setLocalPost] = useState(post);
   const [showComments, setShowComments] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [commentFormData, setCommentFormData] = useState(""); // State untuk form komentar
+  const [replyingTo, setReplyingTo] = useState(null); // State untuk username yang di-reply
+  const [editModalOpen, setEditModalOpen] = useState(false); // State untuk mengontrol modal Edit
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [reportPostId, setReportPostId] = useState(null); // Fix: add reportPostId state
   const [showActions, setShowActions] = useState(false);
 
   const commentForm = useForm({
@@ -27,42 +32,88 @@ export default function PostCard({ post }) {
 
   const handleLike = async () => {
     try {
-        // Kirim request untuk toggle like
-        const res = await axios.post(route('posts.like', { post: localPost.id }, false, Ziggy));
-
-        // Update local state untuk reflect like status dan likes_count secara real-time
-        setLocalPost(prev => ({
-            ...prev,
-            is_liked: res.data.status === 'liked',  // Toggle like status
-            likes_count: res.data.likes_count,      // Update likes count di state
-            total_comments: res.data.total_comments // Update jumlah komentar di state
-        }));
+      const res = await axios.post(route('posts.like', { post: localPost.id }, false, Ziggy));
+      setLocalPost(prev => ({
+        ...prev,
+        is_liked: res.data.status === 'liked',
+        likes_count: res.data.likes_count,
+        total_comments: res.data.total_comments
+      }));
     } catch (err) {
-        console.error('Gagal like:', err.response);
+      console.error('Gagal like:', err.response);
     }
   };
 
   const submitComment = e => {
     e.preventDefault();
-    commentForm.post((route('comments.store', {}, false, Ziggy)), {
+    commentForm.post(route('comments.store', {}, false, Ziggy), {
       preserveScroll: true,
       onSuccess: () => {
         commentForm.reset();
+        setReplyingTo(null); // Reset setelah komentar dikirim
         Inertia.reload({ only: ['posts'] });
       }
     });
   };
 
-  const handleDelete = () => {
-    if (confirm('Yakin ingin menghapus postingan ini?')) {
-        Inertia.delete(route('posts.destroy', { post: localPost.id }, false, Ziggy), {
-            onSuccess: () => {
-                Inertia.reload({ only: ['posts'] });
-            }
-        });
+  const handleCommentLike = async (commentId) => {
+    try {
+      const res = await axios.post(route('comments.like', { comment: commentId }, false, Ziggy));
+      setLocalPost(prev => ({
+        ...prev,
+        comments: prev.comments.map(comment => 
+          comment.id === commentId ? { ...comment, is_liked: res.data.status === 'liked', likes_count: res.data.likes_count } : comment
+        )
+      }));
+    } catch (err) {
+      console.error('Gagal like komentar:', err.response);
     }
   };
 
+  const handleReportComment = async (commentId) => {
+    try {
+      const res = await axios.post(route('comments.report', { comment: commentId }, false, Ziggy));
+      setLocalPost(prev => ({
+        ...prev,
+        comments: prev.comments.map(comment => 
+          comment.id === commentId ? { ...comment, is_reported: true } : comment
+        )
+      }));
+    } catch (err) {
+      console.error('Gagal report komentar:', err.response);
+    }
+  };
+
+  const handleReplyComment = (commentId, username) => {
+    // Ketika user klik reply, tambahkan username yang di-reply ke dalam form
+    setReplyingTo(username);
+    setCommentFormData(`@${username} `); // Menambahkan username pada form comment
+  };
+
+  const handleDelete = () => {
+    Inertia.delete(route('posts.destroy', { post: localPost.id }, false, Ziggy), {
+      onSuccess: () => {
+        Inertia.reload({ only: ['posts'] });
+      }
+    });
+  };
+
+  const handleEdit = async () => {
+    try {
+      await axios.put(route('posts.update', { post: localPost.id }, false, Ziggy), {
+        content: localPost.content
+      });
+      setEditModalOpen(false);
+      Inertia.reload({ only: ['posts'] });
+    } catch (err) {
+      console.error('Gagal edit postingan:', err.response);
+    }
+  };
+
+  const handleReport = (postId) => {
+    setReportPostId(postId);
+    setReportModalOpen(true);
+  };
 
   return (
     <div className="bg-[#2B1B54] text-white p-6 rounded-lg mt-6 mb-6">
@@ -79,7 +130,6 @@ export default function PostCard({ post }) {
           </div>
         </div>
 
-        {/* Tombol aksi */}
         <div className="relative">
           <button onClick={() => setShowActions(!showActions)} className="text-xl px-2 hover:text-purple-400">
             ⋯
@@ -88,37 +138,22 @@ export default function PostCard({ post }) {
             <div className="absolute right-0 mt-2 bg-gray-800 text-sm rounded shadow p-2 space-y-2 z-50 w-36">
               {isOwner ? (
                 <>
-                  <button 
-                    onClick={() => setEditModalOpen(true)} 
-                    className="w-full text-left hover:bg-purple-600 hover:text-white p-2 rounded transition-colors"
-                  >
+                  <button onClick={() => setEditModalOpen(true)} className="w-full text-left hover:bg-purple-600 hover:text-white p-2 rounded transition-colors">
                     Edit
                   </button>
-                  <button 
-                    onClick={handleDelete} 
-                    className="w-full text-left hover:bg-red-600 hover:text-white p-2 rounded transition-colors"
-                  >
+                  <button onClick={() => setDeleteModalOpen(true)} className="w-full text-left hover:bg-red-600 hover:text-white p-2 rounded transition-colors">
                     Hapus
                   </button>
-                  <button 
-                    onClick={() => setShowActions(false)} 
-                    className="w-full text-left hover:bg-gray-600 p-2 rounded transition-colors"
-                  >
+                  <button onClick={() => setShowActions(false)} className="w-full text-left hover:bg-gray-600 p-2 rounded transition-colors">
                     Batal
                   </button>
                 </>
               ) : (
                 <>
-                  <button 
-                    onClick={() => setReportModalOpen(true)} 
-                    className="w-full text-left hover:bg-orange-600 hover:text-white p-2 rounded transition-colors"
-                  >
+                  <button onClick={() => setReportModalOpen(true)} className="w-full text-left hover:bg-orange-600 hover:text-white p-2 rounded transition-colors">
                     Laporkan
                   </button>
-                  <button 
-                    onClick={() => setShowActions(false)} 
-                    className="w-full text-left hover:bg-gray-600 p-2 rounded transition-colors"
-                  >
+                  <button onClick={() => setShowActions(false)} className="w-full text-left hover:bg-gray-600 p-2 rounded transition-colors">
                     Batal
                   </button>
                 </>
@@ -134,31 +169,63 @@ export default function PostCard({ post }) {
       )}
 
       <div className="flex items-center gap-4 text-sm">
-          <button onClick={handleLike}>
-              {localPost.is_liked ? '❤️' : '🤍'} {localPost.likes_count} Likes
-          </button>
-
-          <button onClick={() => setShowComments(prev => !prev)}>
-              💬 {localPost.total_comments} Komentar
-          </button>
+        <button onClick={handleLike}>
+          {localPost.is_liked ? '❤️' : '🤍'} {localPost.likes_count} Likes
+        </button>
+        <button onClick={() => setShowComments(prev => !prev)}>
+          💬 {localPost.total_comments} Komentar
+        </button>
       </div>
 
       {showComments && (
         <div className="mt-4 space-y-3">
           {post.comments.map(c => (
-            <div key={c.id} className="bg-gray-700 p-2 rounded">
-              <strong>{c.user.username}:</strong> {c.comment}
+            <div key={c.id} className="bg-gray-700 p-4 rounded">
+              <strong className="text-sm">{c.user.username}:</strong>
+              <p className="text-sm mt-1">{c.comment}</p>
+
+              <div className="flex gap-4 mt-3 text-sm">
+                <button onClick={() => handleCommentLike(c.id)} className="flex items-center gap-2 text-white hover:text-red-400">
+                  {c.is_liked ? '❤️' : '🤍'} {c.total_likes} Likes
+                </button>
+
+                <button onClick={() => handleReportComment(c.id)} className="text-red-500 hover:text-red-400">
+                  Laporkan
+                </button>
+
+                <button onClick={() => handleReplyComment(c.id, c.user.username)} className="text-blue-500 hover:text-blue-400">
+                  Balas
+                </button>
+              </div>
+
+              {/* Balasan untuk setiap komentar */}
+              {c.replies && c.replies.length > 0 && (
+                <div className="mt-4 pl-5 border-l-2 border-gray-600 space-y-3">
+                  {c.replies.map(reply => (
+                    <div key={reply.id} className="bg-gray-600 p-3 rounded">
+                      <strong>{reply.user.username}:</strong> {reply.comment}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
 
+          {/* Form komentar yang sudah diisi dengan username untuk balasan */}
           <form onSubmit={submitComment} className="flex flex-col gap-2 mt-3">
+            {replyingTo && (
+              <p className="text-sm text-gray-300">Balas ke: @{replyingTo}</p>
+            )}
             <textarea
               required
               className="p-2 rounded text-black"
               rows={2}
               placeholder="Tulis komentar..."
-              value={commentForm.data.comment}
-              onChange={e => commentForm.setData('comment', e.target.value)}
+              value={commentFormData}
+              onChange={(e) => {
+                setCommentFormData(e.target.value);
+                commentForm.setData('comment', e.target.value); // Update form data
+              }}
             />
             <button
               type="submit"
@@ -172,8 +239,14 @@ export default function PostCard({ post }) {
       )}
 
       {/* Modals */}
-      <EditPostModal open={editModalOpen} onClose={() => setEditModalOpen(false)} post={localPost} />
-      <ReportPostModal open={reportModalOpen} onClose={() => setReportModalOpen(false)} postId={localPost.id} content={localPost.content} />
+      <EditPostModal open={editModalOpen} onClose={() => setEditModalOpen(false)} post={localPost} onEdit={handleEdit} />
+      <ReportPostModal open={reportModalOpen} onClose={() => setReportModalOpen(false)} postId={reportPostId} content={localPost.content} />
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        message="Anda yakin ingin menghapus postingan ini?"
+      />
     </div>
   );
 }

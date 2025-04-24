@@ -20,11 +20,7 @@ class Post extends Model
     /**
      * Tambahkan attribute custom otomatis di-serialize
      */
-    protected $appends = [
-        'is_liked',
-        'created_at_human',
-        'total_comments',
-    ];
+protected $appends = ['is_liked','created_at_human','total_comments','likes_count'];
 
     /**
      * Relasi ke User pemilik post
@@ -92,5 +88,11 @@ class Post extends Model
     public function getTotalCommentsAttribute(): int
     {
         return $this->comments()->count();
+    }
+
+    public function getLikesCountAttribute()
+    {
+        return $this->attributes['likes_count']     // dari withCount
+            ?? $this->likedUsers()->count();
     }
 }

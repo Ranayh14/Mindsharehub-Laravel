@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Models\Post;  // Tambahkan ini untuk mengimpor model Post
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
 
 class CommentController extends Controller
 {
@@ -24,11 +26,19 @@ class CommentController extends Controller
             'parent_id' => $data['parent_id'] ?? null,
         ]);
 
-        return response()->json([
-            'status'  => 'success',
-            'comment' => $comment
-                ->load('user:id,username,profile_picture')
-                ->append(['is_liked', 'total_likes', 'created_at_human']),
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with([
+                'user:id,username,profile_picture',
+                'likedUsers:id',
+                'comments' => fn ($q) => $q->with([
+                    'user:id,username,profile_picture',
+                    'likedUsers:id',
+                ])->latest(),
+            ])
+            ->withCount('comments')
+            ->latest()
+            ->paginate(10)
+            ->through(fn ($p) => $p->append(['is_liked','created_at_human'])),
         ]);
     }
 
@@ -41,7 +51,20 @@ class CommentController extends Controller
             $request->validate(['comment' => 'required|string|max:2000'])
         );
 
-        return response()->json(['status' => 'success']);
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with([
+                'user:id,username,profile_picture',
+                'likedUsers:id',
+                'comments' => fn ($q) => $q->with([
+                    'user:id,username,profile_picture',
+                    'likedUsers:id',
+                ])->latest(),
+            ])
+            ->withCount('comments')
+            ->latest()
+            ->paginate(10)
+            ->through(fn ($p) => $p->append(['is_liked','created_at_human'])),
+        ]);
     }
 
     /* ─────────────────── DELETE ─────────────────── */
@@ -51,26 +74,45 @@ class CommentController extends Controller
 
         $comment->delete();
 
-        return response()->json(['status' => 'success']);
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with([
+                'user:id,username,profile_picture',
+                'likedUsers:id',
+                'comments' => fn ($q) => $q->with([
+                    'user:id,username,profile_picture',
+                    'likedUsers:id',
+                ])->latest(),
+            ])
+            ->withCount('comments')
+            ->latest()
+            ->paginate(10)
+            ->through(fn ($p) => $p->append(['is_liked','created_at_human'])),
+        ]);
     }
 
     /* ─────────────────── LIKE / UNLIKE ─────────────────── */
     public function toggleLike(Comment $comment)
     {
-        Gate::authorize('like', $comment);   // policy memastikan tidak like komentar sendiri
+        Gate::authorize('like', $comment);
 
         $user = request()->user();
-        $comment->likedUsers()->toggle($user);            // belongsToMany toggle
-        $likes = $comment->likedUsers()->count();         // hitung ulang
+        $comment->likedUsers()->toggle($user);
 
-        // opsional: simpan counter ke kolom likes_count jika ada
-        if ($comment->isFillable('likes_count')) {
-            $comment->updateQuietly(['likes_count' => $likes]);
-        }
+        $likes_count = $comment->likedUsers()->count();
 
-        return response()->json([
-            'status'      => $comment->likedUsers->contains($user) ? 'liked' : 'unliked',
-            'total_likes' => $likes,
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with([
+                'user:id,username,profile_picture',
+                'likedUsers:id',
+                'comments' => fn ($q) => $q->with([
+                    'user:id,username,profile_picture',
+                    'likedUsers:id',
+                ])->latest(),
+            ])
+            ->withCount('comments')
+            ->latest()
+            ->paginate(10)
+            ->through(fn ($p) => $p->append(['is_liked','created_at_human'])),
         ]);
     }
 }

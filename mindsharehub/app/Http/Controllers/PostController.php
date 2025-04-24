@@ -6,6 +6,7 @@ use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class PostController extends Controller
 {
@@ -23,7 +24,9 @@ class PostController extends Controller
             $post->update(['image_path' => $path]);
         }
 
-        return back()->with('flash.success', 'Postingan berhasil dibuat.');
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with(['user:id,username,profile_picture'])->latest()->paginate(10),
+        ]);
     }
 
     public function destroy(Post $post)
@@ -35,33 +38,53 @@ class PostController extends Controller
         }
         $post->delete();
 
-        return back()->with('flash.success', 'Postingan dihapus.');
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with(['user:id,username,profile_picture'])->latest()->paginate(10),
+        ]);
     }
 
     public function toggleLike(Post $post)
     {
-        try {
-            $user = request()->user();
-            $post->likedUsers()->toggle($user);  // Toggle like status
+        $user = request()->user();
+        $post->likedUsers()->toggle($user);
+
+        $likes = $post->likedUsers()->count();
+        $post->updateQuietly(['likes_count' => $likes]);
+
+        return Inertia::render('Dashboard/User', [
+            'posts' => Post::with([
+                'user:id,username,profile_picture',
+                'likedUsers:id',
+                'comments' => fn ($q) => $q->with([
+                    'user:id,username,profile_picture',
+                    'likedUsers:id',
+                ])->latest(),
+            ])
+            ->withCount('comments')
+            ->latest()
+            ->paginate(10)
+            ->through(fn ($p) => $p->append(['is_liked','created_at_human'])),
+        ]);
+    }
+
+    public function update(Request $r, Post $post)
+    {
+        // Gunakan Gate untuk mengecek apakah user berhak mengedit post
+        Gate::authorize('update', $post);
     
-            // Hitung ulang jumlah likes
-            $likes = $post->likedUsers()->count();
+        // Lanjutkan dengan logika update
+        $data = $r->validate([
+            'content' => 'required|string|max:3000',
+            'image'   => 'nullable|image|max:4096',
+        ]);
     
-            // Hitung jumlah komentar
-            $totalComments = $post->comments()->count();
+        $post->update(['content' => $data['content']]);
     
-            // Update jumlah likes jika ada kolom likes_count
-            if ($post->isFillable('likes_count')) {
-                $post->updateQuietly(['likes_count' => $likes]);
-            }
-    
-            return response()->json([
-                'status'        => $post->likedUsers->contains($user) ? 'liked' : 'unliked',
-                'likes_count'   => $likes,
-                'total_comments' => $totalComments,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+        if ($r->file('image')) {
+            if ($post->image_path) Storage::disk('public')->delete($post->image_path);
+            $path = $r->file('image')->store('uploads', 'public');
+            $post->update(['image_path' => $path]);
         }
+        return response()->json($post); 
     }    
 }

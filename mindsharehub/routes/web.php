@@ -14,9 +14,9 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\ReportController;
 
 /*
-|--------------------------------------------------------------------------
+|---------------------------------------------------------------------------
 | Web Routes
-|--------------------------------------------------------------------------
+|---------------------------------------------------------------------------
 |
 | Here is where you can register web routes for your application.
 |
@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::controller(PostController::class)->group(function () {
         Route::post   ('/posts',              'store')     ->name('posts.store');
         Route::delete ('/posts/{post}',       'destroy')   ->name('posts.destroy');
+        Route::put    ('/posts/{post}',       'update')    ->name('posts.update');
         Route::post   ('/posts/{post}/like',  'toggleLike')->name('posts.like');
     });
 
